@@ -1,0 +1,46 @@
+name: Daily Progress Review
+
+on:
+  schedule:
+    # 毎日 23:00 JST (= 14:00 UTC) に実行
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: "対象日 (YYYY-MM-DD, 省略時は今日)"
+        required: false
+        type: string
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_LOG_CHANNEL_ID: ${{ secrets.SLACK_LOG_CHANNEL_ID }}
+          SLACK_REVIEW_CHANNEL_ID: ${{ secrets.SLACK_REVIEW_CHANNEL_ID }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_GOALS_PAGE_ID: ${{ secrets.NOTION_GOALS_PAGE_ID }}
+          NOTION_REVIEW_DATABASE_ID: ${{ secrets.NOTION_REVIEW_DATABASE_ID }}
+        run: |
+          if [ -n "${{ inputs.target_date }}" ]; then
+            python src/main.py "${{ inputs.target_date }}"
+          else
+            python src/main.py
+          fi
